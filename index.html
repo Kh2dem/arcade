@@ -1,3 +1,43 @@
+<script>
+// ==== Debug HUD (يعرض أخطاء ويشغّل الألعاب يدويًا) ====
+(function(){
+  // لوحة أخطاء على الشاشة
+  const box = document.createElement('div');
+  box.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;background:rgba(0,0,0,.6);color:#fff;font:12px/1.4 system-ui;padding:8px;border:1px solid #333;border-radius:8px;z-index:9999;backdrop-filter:blur(4px)';
+  box.innerHTML = '🛠️ Debug: جاهز';
+  document.addEventListener('DOMContentLoaded', ()=>document.body.appendChild(box));
+  function log(msg){ box.innerHTML = '🛠️ Debug: ' + msg; }
+
+  // مسك الأخطاء
+  window.addEventListener('error', e=>{ log('خطأ: '+ e.message); });
+  window.addEventListener('unhandledrejection', e=>{ log('Promise: '+ (e.reason&&e.reason.message||e.reason)); });
+
+  // أزرار تشغيل يدوي
+  window.addEventListener('load', ()=>{
+    const bar = document.createElement('div');
+    bar.style.cssText='display:flex;gap:6px;margin-top:6px;flex-wrap:wrap';
+    const mk = (t,fn)=>{const b=document.createElement('button'); b.textContent=t; b.style.cssText='padding:6px 10px;border:0;border-radius:6px;background:#0b1b2e;color:#fff;font-weight:700'; b.onclick=fn; return b;};
+    bar.append(
+      mk('تشغيل Space', ()=>{ try{ switchGame && switchGame('space', true); log('Space بدأت'); }catch(err){ log('Space error: '+err.message); } }),
+      mk('تشغيل AR', ()=>{ try{ switchGame && switchGame('ar', true); log('AR بدأت'); }catch(err){ log('AR error: '+err.message); } }),
+      mk('إعادة تعيين SW', async ()=>{
+        try{
+          if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            for (const r of regs) await r.unregister();
+            caches && caches.keys && (await Promise.all((await caches.keys()).map(k=>caches.delete(k))));
+            log('تم إلغاء تسجيل SW ومسح الكاش. حدّث الصفحة.');
+          } else { log('لا يوجد SW'); }
+        } catch(e){ log('SW error: '+e.message); }
+      })
+    );
+    box.appendChild(bar);
+  });
+
+  // إشعار إن السكربت اشتغل
+  log('السكربت اشتغل — اضغط تشغيل لو ما بدأت اللعبة تلقائيًا');
+})();
+</script>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
