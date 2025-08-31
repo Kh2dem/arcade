@@ -1,7 +1,8 @@
 {
   "name": "Mobile Arcade",
   "short_name": "Arcade",
-  "start_url": ".",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#050912",
   "theme_color": "#050912",
