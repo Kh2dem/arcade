@@ -10,11 +10,15 @@
   <meta name="theme-color" content="#050912">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="icon-192.png"><!-- اختياري، أو خلّها لاحقاً -->
+  <link rel="apple-touch-icon" href="icon-192.png">
 
   <style>
+    :root{
+      --safe-top: env(safe-area-inset-top);
+      --safe-bottom: env(safe-area-inset-bottom);
+    }
     html,body{ margin:0; height:100%; background:#000; overscroll-behavior:none; }
-    body{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:none; font:600 14px system-ui, -apple-system, Segoe UI, Roboto; color:#e9eef7; }
+    body{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:none; font:600 14px system-ui, -apple-system, Segoe UI, Roboto; color:#e9eef7; padding-bottom:var(--safe-bottom); }
     .app{ position:fixed; inset:0; background:#050912; }
     .center{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
     .landing{ gap:18px; flex-direction:column; text-align:center; padding:20px; }
@@ -22,42 +26,46 @@
     .row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
     .btn{ appearance:none; border:0; padding:12px 16px; border-radius:12px; background:#0b1b2e; color:#e9eef7; cursor:pointer; font:700 16px system-ui; }
     .small{ font-size:12px; opacity:.75; }
+
     .topbar{
-      position:absolute; top:0; left:0; right:0; height:52px; display:none;
-      align-items:center; justify-content:space-between; gap:8px; padding:0 10px;
+      position:absolute; top:0; left:0; right:0;
+      padding-top:var(--safe-top);
+      height:calc(52px + var(--safe-top));
+      display:none; align-items:center; justify-content:space-between; gap:8px; padding-inline:10px;
       background:rgba(5,9,18,.6); backdrop-filter:blur(6px); border-bottom:1px solid #152033; z-index:5;
     }
     .tabs{ display:flex; gap:8px; }
     .tab{ padding:8px 12px; border-radius:10px; background:#0b1220; border:1px solid #1b2b44; cursor:pointer; opacity:.95 }
     .tab.active{ background:#1a2a49 }
     .xbtn{ appearance:none; border:0; background:#c0392b; color:#fff; font:700 16px system-ui; width:36px; height:36px; border-radius:9px; cursor:pointer; }
-    .hud{ position:absolute; top:56px; left:0; right:0; display:none; gap:6px; justify-content:center; flex-wrap:wrap; z-index:4 }
+
+    .hud{ position:absolute; top:calc(56px + var(--safe-top)); left:0; right:0; display:none; gap:6px; justify-content:center; flex-wrap:wrap; z-index:4 }
     .pill{ background:#0b1220; border:1px solid #1b2b44; border-radius:999px; padding:6px 10px; }
-    .badges{ position:absolute; top:96px; left:0; right:0; display:none; gap:6px; justify-content:center; flex-wrap:wrap; z-index:4 }
+    .badges{ position:absolute; top:calc(96px + var(--safe-top)); left:0; right:0; display:none; gap:6px; justify-content:center; flex-wrap:wrap; z-index:4 }
+
     canvas{
       position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
       background:#000; border:1px solid #1b2b44; border-radius:12px; touch-action:none; display:none;
     }
-    .hint{ position:absolute; bottom:14px; left:0; right:0; text-align:center; font-weight:600; opacity:.7 }
+    .hint{ position:absolute; bottom:calc(14px + var(--safe-bottom)); left:0; right:0; text-align:center; font-weight:600; opacity:.7 }
   </style>
 </head>
 <body>
   <div class="app" id="app">
-    <!-- شاشة البداية -->
+    <!-- Landing -->
     <div class="center landing" id="landing">
       <div class="title">🎮 Mobile Arcade</div>
       <div class="row">
         <button class="btn" id="startSpace">🚀 Space Blaster</button>
         <button class="btn" id="startAR">🎯 AR-Lite Throw</button>
       </div>
-      <div class="small">تعمل فل-سكرين عند الإضافة إلى الشاشة الرئيسية.</div>
-      <div class="small">للخروج من اللعبة اضغط ✖ للرجوع هنا، ثم اسحب لأعلى لإغلاق التطبيق.</div>
+      <div class="small">فل-سكرين: أضِف إلى الشاشة الرئيسية من سفاري.</div>
       <div class="row">
         <button class="btn" id="installBtn">⬇️ أضف للهوم سكرين</button>
       </div>
     </div>
 
-    <!-- شريط علوي + HUD مشترك -->
+    <!-- Top + HUD -->
     <div class="topbar" id="topbar">
       <div class="tabs">
         <button id="tab-space" class="tab">🚀 Space</button>
@@ -68,7 +76,7 @@
     <div id="hud" class="hud"></div>
     <div id="badges" class="badges"></div>
 
-    <!-- لوحتان -->
+    <!-- Canvases -->
     <canvas id="cv-space" width="480" height="720"></canvas>
     <canvas id="cv-ar"    width="480" height="720"></canvas>
 
@@ -76,21 +84,22 @@
   </div>
 
   <script>
-  // تسجيل Service Worker
+  // ------------- PWA -------------
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(()=>{});
+      // مهم: نطاق نسبي داخل /arcade/
+      navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(()=>{});
     });
   }
-
-  // زر “أضف للهوم سكرين” (تحفيز يدوي على iOS)
-  const installBtn = document.getElementById('installBtn');
-  installBtn.addEventListener('click', () => {
-    alert('من سفاري: المشاركة ▸ أضف للشاشة الرئيسية.\nبعدها شغلها من الأيقونة لفل-سكرين.');
+  document.getElementById('installBtn').addEventListener('click', () => {
+    alert('من Safari: مشاركة ▸ Add to Home Screen، ثم افتحها من الأيقونة لفل-سكرين.');
   });
 
-  // عناصر عامة
-  const app = document.getElementById('app');
+  // منع تحديد/تكبير بالنقر المزدوج
+  document.addEventListener('gesturestart', e=>e.preventDefault());
+  document.addEventListener('dblclick', e=>e.preventDefault(), {passive:false});
+
+  // ------------- UI -------------
   const landing = document.getElementById('landing');
   const topbar = document.getElementById('topbar');
   const hud = document.getElementById('hud');
@@ -102,17 +111,9 @@
   const tabAR = document.getElementById('tab-ar');
   const btnX = document.getElementById('x');
 
-  // منع تحديد/تكبير بالنقر المزدوج
-  document.addEventListener('gesturestart', e=>e.preventDefault());
-  document.addEventListener('dblclick', e=>e.preventDefault(), {passive:false});
+  const S = { active:null, loops:{} };
+  const pill = (label,val)=>{ const s=document.createElement('span'); s.className='pill'; s.innerHTML=`${label}<b>${val}</b>`; s.$v=s.querySelector('b'); return s; };
 
-  // حالة
-  const S = { active:null, loops:{}, resizing:false };
-
-  // HUD pill factory
-  function pill(label, val){ const s=document.createElement('span'); s.className='pill'; s.innerHTML=`${label}<b>${val}</b>`; s.$v=s.querySelector('b'); return s; }
-
-  // فتح لعبة
   document.getElementById('startSpace').onclick = () => switchGame('space', true);
   document.getElementById('startAR').onclick    = () => switchGame('ar', true);
   tabSpace.onclick = () => switchGame('space', false);
@@ -120,7 +121,6 @@
   btnX.onclick     = exitToLanding;
 
   function exitToLanding(){
-    // أوقف الحلقات واعرض شاشة البداية
     Object.values(S.loops).forEach(id=> id && clearInterval(id));
     S.loops = {};
     S.active = null;
@@ -130,13 +130,11 @@
     cvSpace.style.display = 'none';
     cvAR.style.display = 'none';
     landing.style.display = 'flex';
-    hint.textContent = 'اسحب للأعلى لإغلاق التطبيق من iOS.';
+    hint.textContent = 'اسحب من أسفل لإغلاق التطبيق.';
   }
 
   function switchGame(which, fromLanding){
     if (S.active === which && !fromLanding) return;
-
-    // واجهة
     landing.style.display = 'none';
     topbar.style.display = 'flex';
     hud.style.display = 'flex';
@@ -145,10 +143,9 @@
     tabSpace.classList.toggle('active', which==='space');
     tabAR.classList.toggle('active', which==='ar');
 
-    // وقف اللعبة الأخرى
+    // أوقف الأخرى
     Object.keys(S.loops).forEach(k=>{ if (k!==which && S.loops[k]) { clearInterval(S.loops[k]); S.loops[k]=null; } });
 
-    // تشغيل الحالية
     S.active = which;
     if (which==='space'){
       cvAR.style.display = 'none'; cvSpace.style.display = 'block';
@@ -161,21 +158,18 @@
     }
   }
 
-  // ====== Space Game (تصادم مُصحّح + يكسّر الأعداء) ======
+  // ------------- Space -------------
   function startSpace(){
     const cv=cvSpace, ctx=cv.getContext('2d',{alpha:false});
-    fitSpace(); window.addEventListener('resize', fitSpace);
     let unit=16;
-
-    function fitSpace(){
-      if (S.resizing) return; S.resizing=true;
+    function fit(){
       const w=Math.min(window.innerWidth, 900), h=Math.min(window.innerHeight, 1400);
       const s=Math.min(w/480, h/720);
       cv.width=Math.max(360, Math.floor(480*s));
       cv.height=Math.max(560, Math.floor(720*s));
       unit=Math.max(10, (cv.width/28)|0);
-      setTimeout(()=>S.resizing=false, 50);
     }
+    fit(); window.addEventListener('resize', fit);
 
     // HUD
     hud.innerHTML=''; badgesWrap.innerHTML='';
@@ -183,47 +177,19 @@
     hud.append(Hscore,Hbest,Hspeed,Hlives);
 
     // حالة
-    let frames=0, speedMul=1, best=loadBest(), paused=false, dead=false;
+    let frames=0, best=loadBest(), dead=false;
     let player, enemies, bullets, particles, powerups, boss=null, bossBullets=[];
     let lives=3, spawnEvery=70, enemySpeed=1.6, score=0;
     const held={UP:false,DOWN:false,LEFT:false,RIGHT:false};
-    const power={ spread:1, fire:false, lightning:0, coffee:0, shield:0, magnet:false, drones:0, pierce:false, freeze:false };
+    const power={ spread:3, fire:true, lightning:1, coffee:1, shield:0, magnet:true, drones:1, pierce:true, freeze:false };
 
+    // أدوات
     const rand=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
     const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
     const hearts=n=>'❤'.repeat(Math.max(0,n))+'♡'.repeat(Math.max(0,3-n));
-    const loadBest=()=>{ try{return parseInt(localStorage.getItem('ma_space_best')||'0',10)||0}catch{return 0} };
-    const saveBest=v=>{ try{localStorage.setItem('ma_space_best',String(v))}catch{} };
+    const loadBest=()=>{ try{return parseInt(localStorage.getItem('mar_best')||'0',10)||0}catch{return 0} };
+    const saveBest=v=>{ try{localStorage.setItem('mar_best',String(v))}catch{} };
     const overlap=(A,B)=> (A.x < B.x + B.w) && (A.x + A.w > B.x) && (A.y < B.y + B.h) && (A.y + A.h > B.y);
-
-    function updateBadges(){
-      badgesWrap.innerHTML='';
-      const push=(i,t)=>{ const x=document.createElement('span'); x.className='pill'; x.textContent=i+' '+t; badgesWrap.appendChild(x); };
-      push('☕', `رش ${power.spread}`);
-      if (power.fire) push('🔥','ناري');
-      if (power.lightning>0) push('⚡',`سرعة +${power.lightning}`);
-      if (power.shield>0) push('🛡️',`درع ×${power.shield}`);
-      if (power.magnet) push('🧲','مغناطيس');
-      if (power.drones>0) push('🤖',`درون ×${power.drones}`);
-      if (power.pierce) push('🗡️','اختراق');
-      if (power.freeze) push('❄️','تبطيء أعداء');
-    }
-    updateBadges();
-
-    function reset(){
-      frames=0; speedMul=1; paused=false; dead=false; score=0; lives=3; spawnEvery=70; enemySpeed=1.6;
-      Object.assign(power,{spread:1,fire:false,lightning:0,coffee:0,shield:0,magnet:false,drones:0,pierce:false,freeze:false});
-      player={x:cv.width/2,y:cv.height-unit*3.5,w:unit*1.8,h:unit*2.2, baseSpeed:3.0, fireTimer:0};
-      enemies=[]; bullets=[]; particles=[]; powerups=[]; boss=null; bossBullets=[];
-      Hscore.$v.textContent='0'; Hbest.$v.textContent=String(best); Hspeed.$v.textContent='1x'; Hlives.$v.textContent=hearts(lives);
-    }
-    reset();
-
-    // لمس للتحريك + منع تحديد
-    let t0=null;
-    cv.addEventListener('touchstart', e=>{ e.preventDefault(); if(!e.touches[0])return; t0={x:e.touches[0].clientX,y:e.touches[0].clientY}; }, {passive:false});
-    cv.addEventListener('touchmove', e=>{ e.preventDefault(); if(!t0||!e.touches[0])return; const dx=e.touches[0].clientX-t0.x, dy=e.touches[0].clientY-t0.y; held.LEFT=dx<-12; held.RIGHT=dx>12; held.UP=dy<-12; held.DOWN=dy>12; }, {passive:false});
-    cv.addEventListener('touchend',  e=>{ e.preventDefault(); t0=null; held.UP=held.DOWN=held.LEFT=held.RIGHT=false; }, {passive:false});
 
     // خلفية
     const starsL1=[], starsL2=[], meteors=[];
@@ -232,6 +198,7 @@
       for(let i=0;i<60;i++) starsL1.push({x:Math.random()*cv.width,y:Math.random()*cv.height,s:Math.random()*1.5+0.5});
       for(let i=0;i<30;i++) starsL2.push({x:Math.random()*cv.width,y:Math.random()*cv.height,s:Math.random()*2+1});
     }
+
     function drawSpace(){
       ctx.fillStyle='#061021'; ctx.fillRect(0,0,cv.width,cv.height);
       ctx.fillStyle='rgba(255,255,255,0.7)';
@@ -263,12 +230,12 @@
       ctx.restore();
     }
     function drawBullet(b){
-      if (power.fire){ ctx.fillStyle='#ffb347'; ctx.fillRect(b.x-2,b.y-8,4,10); particles.push({x:b.x+(Math.random()*2-1),y:b.y+Math.random()*6,vx:0,vy:.5,s:2,a:.6,c:'#ff8c42'}); }
+      if (power.fire){ ctx.fillStyle='#ffb347'; ctx.fillRect(b.x-2,b.y-8,4,10); }
       else { ctx.fillStyle='#f5f6fa'; ctx.fillRect(b.x-2,b.y-8,4,10); }
     }
 
+    // توليد/باورات
     function addEnemy(){ const w=unit*1.6,h=unit*1.6; enemies.push({x:rand(w,cv.width-w),y:-h,w,h,vy:(enemySpeed+(Math.random()*0.8))*(power.freeze?0.6:1),hp:rand(1,2),hit:0}); }
-    function explode(x,y,color='#ffd166'){ for(let i=0;i<10;i++) particles.push({x:x+rand(-6,6),y:y+rand(-6,6),vx:rand(-2,2)/2,vy:rand(-2,2)/2,s:rand(2,4),a:1,c:color}); }
     function spawnPower(x,y){
       const types=['coffee','lightning','fire','shield','magnet','drone','pierce','freeze'];
       const weights=[22,18,14,12,10,10,8,6];
@@ -285,6 +252,19 @@
       else if (t==='pierce'){ power.pierce=true; }
       else if (t==='freeze'){ power.freeze=true; }
       updateBadges();
+    }
+
+    function updateBadges(){
+      badgesWrap.innerHTML='';
+      const push=(i,t)=>{ const x=document.createElement('span'); x.className='pill'; x.textContent=i+' '+t; badgesWrap.appendChild(x); };
+      push('☕', `رش ${power.spread}`);
+      if (power.fire) push('🔥','ناري');
+      if (power.lightning>0) push('⚡',`سرعة +${power.lightning}`);
+      if (power.shield>0) push('🛡️',`درع ×${power.shield}`);
+      if (power.magnet) push('🧲','مغناطيس');
+      if (power.drones>0) push('🤖',`درون ×${power.drones}`);
+      if (power.pierce) push('🗡️','اختراق');
+      if (power.freeze) push('❄️','تبطيء أعداء');
     }
 
     function shoot(){
@@ -310,10 +290,24 @@
       ctx.fillStyle='#1b2b44'; ctx.fillRect(x,y,barW,barH); ctx.fillStyle='#e74c3c'; ctx.fillRect(x,y,barW*(b.hp/b.maxHp),barH); ctx.strokeStyle='#000'; ctx.strokeRect(x,y,barW,barH);
     }
 
+    function reset(){
+      frames=0; dead=false; score=0; lives=3; spawnEvery=70; enemySpeed=1.6;
+      player={x:cv.width/2,y:cv.height-unit*3.5,w:unit*1.8,h:unit*2.2, baseSpeed:3.0, fireTimer:0};
+      enemies=[]; bullets=[]; particles=[]; powerups=[]; boss=null; bossBullets=[];
+      Hscore.$v.textContent='0'; Hbest.$v.textContent=String(best); Hspeed.$v.textContent='1x'; Hlives.$v.textContent=hearts(lives);
+      updateBadges(); initSpace();
+    }
+    reset();
+
+    // لمس للتحريك
+    let t0=null;
+    cv.addEventListener('touchstart', e=>{ e.preventDefault(); if(!e.touches[0])return; t0={x:e.touches[0].clientX,y:e.touches[0].clientY}; }, {passive:false});
+    cv.addEventListener('touchmove', e=>{ e.preventDefault(); if(!t0||!e.touches[0])return; const dx=e.touches[0].clientX-t0.x, dy=e.touches[0].clientY-t0.y; held.LEFT=dx<-12; held.RIGHT=dx>12; held.UP=dy<-12; held.DOWN=dy>12; }, {passive:false});
+    cv.addEventListener('touchend',  e=>{ e.preventDefault(); t0=null; held.UP=held.DOWN=held.LEFT=held.RIGHT=false; }, {passive:false});
+
+    // خطوة
     function step(){
       frames++;
-
-      if (!boss && frames%220===0){ spawnEvery=Math.max(34, spawnEvery-4); enemySpeed=Math.min(3.5, enemySpeed+0.15); }
 
       const sp = player.baseSpeed * (1 + 0.18*power.lightning);
       player.x = clamp(player.x + ((held.LEFT?-sp:0)+(held.RIGHT?sp:0)), player.w/2, cv.width-player.w/2);
@@ -322,7 +316,6 @@
       shoot(); if (player.fireTimer>0) player.fireTimer--;
 
       if (!boss && frames % Math.max(18, Math.floor(spawnEvery))===0) addEnemy();
-
       if (!boss && score>0 && score % 30===0){ enemies.length=0; spawnBoss(); }
 
       bullets.forEach(b=>{ b.y+=b.vy; b.x+=(b.vx||0); });
@@ -331,8 +324,8 @@
       enemies.forEach(e=>{ e.y += e.vy * (power.freeze?0.6:1); });
       for(let i=enemies.length-1;i>=0;i--) if (enemies[i].y>cv.height+enemies[i].h+10) enemies.splice(i,1);
 
-      // تصادم (مُصلّح) — يكسر المربعات
-      outer: for (let i=0;i<bullets.length;i++){
+      // تصادم رصاص × أعداء
+      for (let i=0;i<bullets.length;i++){
         const b=bullets[i];
         for (let j=0;j<enemies.length;j++){
           const e=enemies[j];
@@ -340,16 +333,17 @@
             e.hp -= power.fire?2:1; e.hit=4;
             if (b.pierce>0){ b.pierce--; } else { bullets.splice(i,1); i--; }
             if (e.hp<=0){
-              explode(e.x,e.y); if (Math.random()<0.45) spawnPower(e.x,e.y);
+              if (Math.random()<0.45) spawnPower(e.x,e.y);
               enemies.splice(j,1); j--;
               score++; if (score>best){ best=score; saveBest(best); }
               Hscore.$v.textContent=String(score); Hbest.$v.textContent=String(best);
             }
-            continue outer;
+            break;
           }
         }
       }
 
+      // باورات
       powerups.forEach(pu=>{
         pu.y += 1.2;
         if (power.magnet){ const dx=player.x-pu.x, dy=player.y-pu.y, d=Math.hypot(dx,dy); if (d<180){ pu.x+=dx*0.05; pu.y+=dy*0.05; } }
@@ -360,27 +354,28 @@
         else if (pu.y>cv.height+30) powerups.splice(i,1);
       }
 
+      // بوس
       if (boss){
         boss.x += boss.vx*boss.dir;
         if (boss.x-boss.w/2<8 || boss.x+boss.w/2>cv.width-8) boss.dir*=-1;
         if (boss.fireCd>0) boss.fireCd--;
         else {
           boss.pattern = (boss.pattern+1)%3;
-          if (boss.pattern===0){ for(let i=-2;i<=2;i++) bossBullets.push({x:boss.x+i*20,y:boss.y+boss.h/2,vx:i*0.5,vy:3}); }
-          else if (boss.pattern===1){ for(let a=-3;a<=3;a++) bossBullets.push({x:boss.x,y:boss.y+boss.h/2,vx:a*0.35,vy:2.6}); }
-          else { for(let i=0;i<6;i++) bossBullets.push({x:rand(boss.x-boss.w/2+20,boss.x+boss.w/2-20),y:boss.y+boss.h/2,vx:0,vy:3.5}); }
+          const add=(vx,vy,x=boss.x)=> bossBullets.push({x,y:boss.y+boss.h/2,vx,vy});
+          if (boss.pattern===0){ for(let i=-2;i<=2;i++) add(i*0.5,3, boss.x+i*20); }
+          else if (boss.pattern===1){ for(let a=-3;a<=3;a++) add(a*0.35,2.6); }
+          else { for(let i=0;i<6;i++) add(0,3.5, rand(boss.x-boss.w/2+20,boss.x+boss.w/2-20)); }
           boss.fireCd = Math.max(22, 46 - Math.floor(score/10));
         }
         bossBullets.forEach(bb=>{ bb.x+=bb.vx; bb.y+=bb.vy; });
         for(let i=bossBullets.length-1;i>=0;i--){ const bb=bossBullets[i]; if (bb.y>cv.height+30||bb.x<-30||bb.x>cv.width+30) bossBullets.splice(i,1); }
 
-        // رصاص اللاعب × البوس
+        // رصاص اللاعب × بوس
         for (let i=0;i<bullets.length;i++){
           const b=bullets[i];
           if (overlap({x:b.x-2,y:b.y-8,w:4,h:10},{x:boss.x-boss.w/2,y:boss.y-boss.h/2,w:boss.w,h:boss.h})){
             boss.hp -= power.fire?2:1; if (b.pierce>0){ b.pierce--; } else { bullets.splice(i,1); i--; }
             if (boss.hp<=0){
-              explode(boss.x,boss.y);
               for(let k=0;k<4;k++) spawnPower(boss.x+rand(-40,40), boss.y+rand(-10,10));
               boss=null; bossBullets.length=0; score+=5; if(score>best){ best=score; saveBest(best); }
               Hscore.$v.textContent=String(score); Hbest.$v.textContent=String(best);
@@ -404,46 +399,31 @@
       drawSpace();
       enemies.forEach(drawEnemy);
       bullets.forEach(drawBullet);
-      // أيقونات الباور
-      powerups.forEach(pu=>{
-        ctx.save(); ctx.translate(pu.x,pu.y);
-        const t=pu.type; ctx.fillStyle='#fff';
-        if(t==='coffee'){ ctx.fillStyle='#f1c40f'; ctx.fillRect(-8,-10,16,10); ctx.fillStyle='#6e2c00'; ctx.fillRect(-6,-8,12,6); }
-        else if(t==='lightning'){ ctx.fillStyle='#f9e79f'; ctx.beginPath(); ctx.moveTo(-4,-10); ctx.lineTo(2,-10); ctx.lineTo(-1,0); ctx.lineTo(4,0); ctx.lineTo(-2,10); ctx.lineTo(0,2); ctx.closePath(); ctx.fill(); }
-        else if(t==='fire'){ ctx.fillStyle='#ff6b6b'; ctx.beginPath(); ctx.arc(0,0,8,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#ffa502'; ctx.beginPath(); ctx.arc(0,2,5,0,Math.PI*2); ctx.fill(); }
-        else if(t==='shield'){ ctx.fillStyle='#5dade2'; ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(8,-4); ctx.lineTo(6,8); ctx.lineTo(-6,8); ctx.lineTo(-8,-4); ctx.closePath(); ctx.fill(); }
-        else if(t==='magnet'){ ctx.fillStyle='#e74c3c'; ctx.fillRect(-8,-8,6,16); ctx.fillStyle='#c0392b'; ctx.fillRect(2,-8,6,16); }
-        else if(t==='drone'){ ctx.fillStyle='#9b59b6'; ctx.fillRect(-8,-6,16,12); }
-        else if(t==='pierce'){ ctx.fillStyle='#ecf0f1'; ctx.fillRect(-2,-10,4,20); }
-        else if(t==='freeze'){ ctx.fillStyle='#a3d5ff'; ctx.beginPath(); ctx.arc(0,0,8,0,Math.PI*2); ctx.fill(); }
-        ctx.restore();
-      });
-
-      Hspeed.$v.textContent = speedMul.toFixed(1)+'x';
-
-      // سباون
-      if (frames===0) initSpace();
-      if (!boss && frames % Math.max(18, Math.floor(spawnEvery))===0) addEnemy();
+      if (boss){ drawBoss(boss); }
     }
 
+    // تشغيل
     S.loops.space && clearInterval(S.loops.space);
-    S.loops.space = setInterval(startSpace, 1000/60); // أول تشغيل
+    S.loops.space = setInterval(step, 1000/60);
   }
 
-  // ====== AR Game (إصلاح اللمس + شحن/رمي) ======
+  // ------------- AR -------------
   function startAR(){
     const cv=cvAR, ctx=cv.getContext('2d',{alpha:false});
-    fitAR(); window.addEventListener('resize', fitAR);
-    function fitAR(){
+    let W=cv.width,H=cv.height, groundY=Math.floor(H*0.84), pxMeter=H/14;
+    const g = 9.8*(pxMeter/60/60)*60;
+
+    function fit(){
       const w=Math.min(window.innerWidth, 900), h=Math.min(window.innerHeight, 1400);
       const s=Math.min(w/480, h/720);
       cv.width=Math.max(360, Math.floor(480*s));
       cv.height=Math.max(560, Math.floor(720*s));
       W=cv.width; H=cv.height;
-      groundY=Math.floor(H*0.84); pxMeter=H/14; player.x=Math.floor(W*0.16); player.y=groundY-player.r; redrawStatic=true;
+      groundY=Math.floor(H*0.84); pxMeter=H/14;
+      player.x=Math.floor(W*0.16); player.y=groundY-player.r; redrawStatic=true;
     }
-    let W=cv.width,H=cv.height, groundY=Math.floor(H*0.84), pxMeter=H/14;
-    const g = 9.8*(pxMeter/60/60)*60;
+    fit(); window.addEventListener('resize', fit);
+
     const player={x:Math.floor(W*0.16), y:groundY-12, r:12, charging:false, chargeT:0, maxV:1100};
     let score=0, stage=1, target={x:0,r:20}, shot=null, trail=[], redrawStatic=true;
 
@@ -467,7 +447,7 @@
       target.x = rand(minX, Math.max(minX+40,maxX)); updHUD(); redrawStatic=true;
     }
 
-    // لمس/ماوس — كلّها داخل اللوحة + منع السحب
+    // لمس/ماوس
     cv.addEventListener('touchstart', e=>{ e.preventDefault(); startCharge(e.touches[0]); }, {passive:false});
     cv.addEventListener('touchmove',  e=>{ e.preventDefault(); updateAim(e.touches[0]); }, {passive:false});
     cv.addEventListener('touchend',   e=>{ e.preventDefault(); release(); }, {passive:false});
@@ -491,16 +471,11 @@
     function drawGround(){
       const grad=ctx.createLinearGradient(0,0,0,H); grad.addColorStop(0,'#0a274d'); grad.addColorStop(1,'#07121f'); ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
       ctx.fillStyle='#061427'; ctx.fillRect(0,groundY,W,H-groundY);
-      ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1;
-      for(let i=0;i<14;i++){ const y=groundY+(H-groundY)*(i/13); ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
-      const vpX=Math.floor(W*0.5), vpY=Math.floor(H*0.52);
-      for(let i=0;i<=14;i++){ const x=i/14*W; ctx.beginPath(); ctx.moveTo(x,H); ctx.lineTo(vpX,vpY); ctx.stroke(); }
     }
     function drawTarget(){
       ctx.save(); ctx.translate(target.x, groundY);
-      ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(0,4,target.r*1.4,target.r*0.5,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(0,4,28,10,0,0,Math.PI*2); ctx.fill();
       ctx.lineWidth=4; ctx.strokeStyle='#f59e0b'; ctx.beginPath(); ctx.arc(0,0,target.r,0,Math.PI*2); ctx.stroke();
-      ctx.strokeStyle='#fef08a'; ctx.beginPath(); ctx.arc(0,0,target.r*0.55,0,Math.PI*2); ctx.stroke();
       ctx.restore();
     }
     function drawPlayer(){
@@ -509,27 +484,23 @@
       ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.fillRect(x,y,w,h);
       const pct = player.charging ? Math.min(1, player.chargeT/900) : 0;
       ctx.fillStyle='#22c55e'; ctx.fillRect(x,y,Math.floor(w*pct),h);
-      ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.strokeRect(x,y,w,h);
     }
     function drawAim(){
       if (!player.charging) return;
       const d=aim.vec; ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=2;
       ctx.beginPath(); ctx.moveTo(player.x,player.y); ctx.lineTo(player.x+d.x*80, player.y-d.y*80); ctx.stroke();
-      // مسار تقديري
-      const samples=18, v0= (380 + (1100-380)* (1-Math.pow(1-Math.min(1,player.chargeT/900),3)));
-      const vx=d.x*v0/60, vy0=-d.y*v0/60; let x=player.x, y=player.y, vy=vy0; ctx.fillStyle='rgba(255,255,255,0.4)';
+      // نقاط مسار تقديري
+      const samples=18, v0=(380 + (1100-380)*(1-Math.pow(1-Math.min(1,player.chargeT/900),3)));
+      const vx=d.x*v0/60, vy0=-d.y*v0/60; let x=player.x, y=player.y, vy=vy0;
+      ctx.fillStyle='rgba(255,255,255,0.4)';
       for(let i=0;i<samples;i++){ x+=vx*2.5; vy += (g/60)*2.5; y+=vy*2.5; if (y>groundY) break; ctx.beginPath(); ctx.arc(x,y,2.2,0,Math.PI*2); ctx.fill(); }
     }
     function drawShot(){
       if(!shot) return;
-      ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=2; ctx.beginPath();
-      trail.forEach((p,i)=> i? ctx.lineTo(p.x,p.y): ctx.moveTo(p.x,p.y)); ctx.stroke();
       ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(shot.x,shot.y,8,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(Math.max(0,Math.min(W,shot.x)), groundY+3, 10,4,0,0,Math.PI*2); ctx.fill();
     }
 
     function physics(){
-      if (S.active!=='ar') return;
       if (player.charging) player.chargeT += 1000/60;
       if (shot && shot.live){
         shot.x += shot.vx/60; shot.vy += g/60; shot.y += shot.vy/60;
@@ -542,11 +513,12 @@
       }
     }
     function draw(){
-      if (S.active!=='ar') return;
+      // خلفية خفيفة لعدم الوميض
       if (redrawStatic){ drawGround(); redrawStatic=false; } else { ctx.fillStyle='rgba(3,16,36,0.25)'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#061427'; ctx.fillRect(0,groundY,W,H-groundY); }
       drawTarget(); drawAim(); drawPlayer(); drawShot();
     }
 
+    // تشغيل
     placeTarget(); updHUD();
     S.loops.ar && clearInterval(S.loops.ar);
     S.loops.ar = setInterval(()=>{ physics(); draw(); }, 1000/60);
